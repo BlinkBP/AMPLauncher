@@ -3,12 +3,12 @@
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call
 
 class AMPLauncher(Gtk.Window):
 
     def __init__(self):
-        self.fullscreenToggle = False
+        self.displayMode = ""
         self.lavdoptsToggle = False
         self.lavdoptsThreads = 1
         Gtk.Window.__init__(self, title="AMPLauncher")
@@ -52,7 +52,12 @@ class AMPLauncher(Gtk.Window):
         self.mainBox.add(self.comboBox)
         #other options
         self.otherLabel = Gtk.Label("Other options:")
-        self.fsCheckBtn = Gtk.CheckButton("Fullscreen")
+        self.wndRadioBtn = Gtk.RadioButton.new_from_widget(None)
+        self.wndRadioBtn.set_label("Windowed")
+        self.fsRadioBtn = Gtk.RadioButton.new_from_widget(self.wndRadioBtn)
+        self.fsRadioBtn.set_label("Fullscreen")
+        self.zmRadioBtn = Gtk.RadioButton.new_from_widget(self.wndRadioBtn)
+        self.zmRadioBtn.set_label("Zoomed")
         self.useLavdoptsBtn = Gtk.CheckButton("Use lavdopts")
         self.threadsLabel = Gtk.Label("Threads(MPEG-1/2 and H.264 only):")
         self.threadsSpinBtn = Gtk.SpinButton()
@@ -61,10 +66,15 @@ class AMPLauncher(Gtk.Window):
         self.threadsSpinBtn.set_sensitive(False)
         self.otherBox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
                                    spacing=6)
+        self.radioBox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,
+                                spacing=6)
         self.threadsBox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,
                                   spacing=6)
         self.otherBox.add(self.otherLabel)
-        self.otherBox.add(self.fsCheckBtn)
+        self.radioBox.add(self.wndRadioBtn)
+        self.radioBox.add(self.fsRadioBtn)
+        self.radioBox.add(self.zmRadioBtn)
+        self.otherBox.add(self.radioBox)
         self.otherBox.add(self.useLavdoptsBtn)
         self.threadsBox.add(self.threadsLabel)
         self.threadsBox.add(self.threadsSpinBtn)
@@ -78,10 +88,17 @@ class AMPLauncher(Gtk.Window):
     def connect_interface(self):
         self.chooseFileBtn.connect("clicked",
                                    self.on_open_file_button_clicked)
+        self.wndRadioBtn.connect("toggled",
+                                 self.on_display_mode_toggled,
+                                 "")
+        self.fsRadioBtn.connect("toggled",
+                                self.on_display_mode_toggled,
+                                "-fs")
+        self.zmRadioBtn.connect("toggled",
+                                   self.on_display_mode_toggled,
+                                   "-zoom")
         self.useLavdoptsBtn.connect("toggled",
                                        self.on_use_lavdopts_toggle)
-        self.fsCheckBtn.connect("toggled",
-                                self.on_fullscreen_toggle)
         self.threadsSpinBtn.connect("value-changed",
                                     self.on_spin_button_value_changed)
         self.playBtn.connect("clicked",
@@ -143,21 +160,23 @@ class AMPLauncher(Gtk.Window):
             self.threadsSpinBtn.set_sensitive(True)
             self.lavdoptsToggle = True
         
-    def on_fullscreen_toggle(self, button):
-        if self.fullscreenToggle:
-            self.fullscreenToggle = False
-        else:
-            self.fullscreenToggle = True
+    def on_display_mode_toggled(self, button, name):
+        self.displayMode = name
 
     def on_spin_button_value_changed(self, button):
         self.lavdoptsThreads = self.threadsSpinBtn.get_value()
 
     def on_play_button_clicked(self, button):
-        args = ["mplayer", '"' + self.filePathEntry.get_text() + '"',
+        args = ["mplayer", self.filePathEntry.get_text(),
                 "-ao", self.get_vo_ao_value("ao"),
-                "-vo", self.get_vo_ao_value("vo")]
+                "-vo", self.get_vo_ao_value("vo"),
+                self.displayMode]
+        if self.lavdoptsToggle:
+            args.append("-lavdopts")
+            args.append("threads=" + str(int(self.lavdoptsThreads)))
         print(args)
-        
+        call(args)
+       
     def add_filters(self, dialog):
         filter_all = Gtk.FileFilter()
         filter_all.set_name("All files")
