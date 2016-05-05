@@ -1,0 +1,4 @@
+#AMPLauncher
+
+##Description
+Python script providing a menu allowing user to select advanced MPlayer options (output drivers specific) in order to play a file in a desired way.
