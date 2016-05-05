@@ -4,6 +4,8 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 from subprocess import Popen, PIPE, call
+import os
+import getpass
 
 class AMPLauncher(Gtk.Window):
 
@@ -19,6 +21,7 @@ class AMPLauncher(Gtk.Window):
                                spacing=6)
         self.add(self.mainBox)
         self.set_up_interface()
+        self.load_presets()
 
     def set_up_interface(self):
         #Filepath
@@ -80,19 +83,18 @@ class AMPLauncher(Gtk.Window):
         self.threadsBox.add(self.threadsLabel)
         self.threadsBox.add(self.threadsSpinBtn)
         self.otherBox.add(self.threadsBox)
-
         #presets
         self.presetsLabel = Gtk.Label("Presets:")
         self.presetsComboBox = Gtk.ComboBoxText()
         #self.setPresetsComboBox
         self.savePresetBtn = Gtk.Button("Save preset")
-        self.loadPresetBtn = Gtk.Button("Load preset")
+        self.runPresetBtn = Gtk.Button("Run preset")
         self.presetsBox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
                                  spacing=6)
         self.presetBtnBox = Gtk.Box(Gtk.Orientation.HORIZONTAL,
                                     spacing=6)
         self.presetBtnBox.add(self.savePresetBtn)
-        self.presetBtnBox.add(self.loadPresetBtn)
+        self.presetBtnBox.add(self.runPresetBtn)
         self.presetsBox.add(self.presetsLabel)
         self.presetsBox.add(self.presetsComboBox)
         self.presetsBox.add(self.presetBtnBox)
@@ -121,12 +123,20 @@ class AMPLauncher(Gtk.Window):
                                     self.on_spin_button_value_changed)
         self.savePresetBtn.connect("clicked",
                            self.on_save_preset_button_clicked)
-        self.loadPresetBtn.connect("clicked",
-                            self.on_load_preset_button_clicked)
+        self.runPresetBtn.connect("clicked",
+                            self.on_run_preset_button_clicked)
         self.playBtn.connect("clicked",
                              self.on_play_button_clicked)
-        
-        
+
+    def load_presets(self):
+        self.path = "/home/" + getpass.getuser() + "/.AMPLauncher"
+        if os.path.isdir(self.path):
+            for file in os.listdir(self.path):
+                self.presetsComboBox.append_text(file)
+                self.presets.append(open(self.path + "/" + file).read())
+        else:
+            os.makedirs(self.path)
+                
     def set_combo_box(self, comboBox, entries):
         for entry in entries:
             comboBox.append_text(entry)
@@ -189,20 +199,50 @@ class AMPLauncher(Gtk.Window):
         self.lavdoptsThreads = self.threadsSpinBtn.get_value()
 
     def on_save_preset_button_clicked(self, button):
-        pass
+        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
+                                   Gtk.ButtonsType.OK, "Enter preset name:")
+        dialogBox = dialog.get_content_area()
+        name = "default"
+        entry = Gtk.Entry()
+        entry.set_text(name)
+        entry.show()
+        dialogBox.add(entry)
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            name = entry.get_text()
+            dialog.destroy()
+            self.save_preset(name)
+            
+    def on_run_preset_button_clicked(self, button):
+        cmd = self.presets[self.presetsComboBox.get_active()]
+        args = str(cmd).split()
+        print(cmd)
+        args.insert(1, self.filePathEntry.get_text())
+        print(args)
+        call(args)
 
-    def on_load_preset_button_clicked(self, button):
-        pass
-
-    def on_play_button_clicked(self, button):
-        args = ["mplayer", self.filePathEntry.get_text(),
+    def save_preset(self, name):
+        file = open(self.path + "/" + name, "w")
+        cmd = ""
+        for item in self.get_args():
+            cmd += item + " "
+        file.write(cmd)
+        file.close()
+        self.load_presets()
+        
+    def get_args(self):
+        args = ["mplayer",
                 "-ao", self.get_vo_ao_value("ao"),
                 "-vo", self.get_vo_ao_value("vo"),
                 self.displayMode]
         if self.lavdoptsToggle:
             args.append("-lavdopts")
             args.append("threads=" + str(int(self.lavdoptsThreads)))
-        print(args)
+        return args
+            
+    def on_play_button_clicked(self, button):
+        args = self.get_args()
+        args.insert(1, self.filePathEntry.get_text())
         call(args)
        
     def add_filters(self, dialog):
