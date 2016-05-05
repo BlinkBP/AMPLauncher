@@ -6,23 +6,27 @@ from gi.repository import Gtk
 from subprocess import Popen, PIPE, call
 import os
 import getpass
+import sys
 
 class AMPLauncher(Gtk.Window):
 
     def __init__(self):
+        #final command variables
         self.displayMode = ""
         self.presets = []
         self.lavdoptsToggle = False
         self.lavdoptsThreads = 1
-        Gtk.Window.__init__(self, title="AMPLauncher")
         
+        Gtk.Window.__init__(self, title="AMPLauncher")
+        #main box holding GUI elements
         self.mainBox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
                                homogeneous=False,
                                spacing=6)
         self.add(self.mainBox)
+        #set up all GUI elements
         self.set_up_interface()
         self.load_presets()
-
+        
     def set_up_interface(self):
         #Filepath
         self.filePathEntry = Gtk.Entry()
@@ -56,18 +60,25 @@ class AMPLauncher(Gtk.Window):
         self.mainBox.add(self.comboBox)
         #other options
         self.otherLabel = Gtk.Label("Other options:")
+        ##Display mode
         self.wndRadioBtn = Gtk.RadioButton.new_from_widget(None)
         self.wndRadioBtn.set_label("Windowed")
         self.fsRadioBtn = Gtk.RadioButton.new_from_widget(self.wndRadioBtn)
         self.fsRadioBtn.set_label("Fullscreen")
         self.zmRadioBtn = Gtk.RadioButton.new_from_widget(self.wndRadioBtn)
         self.zmRadioBtn.set_label("Zoomed")
+        ##lavdopts
         self.useLavdoptsBtn = Gtk.CheckButton("Use lavdopts")
         self.threadsLabel = Gtk.Label("Threads(MPEG-1/2 and H.264 only):")
         self.threadsSpinBtn = Gtk.SpinButton()
         adjustment = Gtk.Adjustment(1, 1, self.get_threads(), 1)
         self.threadsSpinBtn.set_adjustment(adjustment)
         self.threadsSpinBtn.set_sensitive(False)
+        #presets
+        self.presetsLabel = Gtk.Label("Presets:")
+        self.presetsComboBox = Gtk.ComboBoxText()#text loaded in load_presets()
+        self.savePresetBtn = Gtk.Button("Save preset")
+        self.runPresetBtn = Gtk.Button("Run preset")
         self.otherBox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
                                    spacing=6)
         self.radioBox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,
@@ -83,12 +94,6 @@ class AMPLauncher(Gtk.Window):
         self.threadsBox.add(self.threadsLabel)
         self.threadsBox.add(self.threadsSpinBtn)
         self.otherBox.add(self.threadsBox)
-        #presets
-        self.presetsLabel = Gtk.Label("Presets:")
-        self.presetsComboBox = Gtk.ComboBoxText()
-        #self.setPresetsComboBox
-        self.savePresetBtn = Gtk.Button("Save preset")
-        self.runPresetBtn = Gtk.Button("Run preset")
         self.presetsBox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
                                  spacing=6)
         self.presetBtnBox = Gtk.Box(Gtk.Orientation.HORIZONTAL,
@@ -103,6 +108,7 @@ class AMPLauncher(Gtk.Window):
         #Play btn
         self.playBtn = Gtk.Button("Play")
         self.mainBox.add(self.playBtn)
+        #Connect all events
         self.connect_interface()
 
     def connect_interface(self):
@@ -142,6 +148,7 @@ class AMPLauncher(Gtk.Window):
             comboBox.append_text(entry)
 
     def get_vo_ao(self, opt):
+        #get available vo/ao drivers from mplayer command
         args = ["mplayer", "-" + opt, "help"]
         out, err = Popen(args, stdout=PIPE).communicate()
         output = out.decode("utf-8")
@@ -155,6 +162,7 @@ class AMPLauncher(Gtk.Window):
         return o[:-2]
 
     def get_vo_ao_value(self, opt):
+        #get vo/ao active combo box value
         if opt == "vo":
             value = self.vo[self.voComboBox.get_active()]
         elif opt == "ao":
@@ -163,6 +171,7 @@ class AMPLauncher(Gtk.Window):
         return value[1:index]
 
     def get_threads(self):
+        #get number of computer's threads using nproc command
         args = ["nproc", "--all"]
         out, err = Popen(args, stdout=PIPE).communicate()
         return int(out.decode("utf-8"))
@@ -183,6 +192,13 @@ class AMPLauncher(Gtk.Window):
             print("Cancel clicked")
         dialog.destroy()
 
+    def add_filters(self, dialog):
+        #Filters for file dialog
+        filter_all = Gtk.FileFilter()
+        filter_all.set_name("All files")
+        filter_all.add_pattern("*")
+        dialog.add_filter(filter_all)
+        
     def on_use_lavdopts_toggle(self, button):
         isSensitive = self.threadsSpinBtn.get_property('sensitive')
         if isSensitive:
@@ -222,6 +238,7 @@ class AMPLauncher(Gtk.Window):
         call(args)
 
     def save_preset(self, name):
+        #save preset in form of a command (string)
         file = open(self.path + "/" + name, "w")
         cmd = ""
         for item in self.get_args():
@@ -231,6 +248,7 @@ class AMPLauncher(Gtk.Window):
         self.load_presets()
         
     def get_args(self):
+        #get an array with all arguments - final command w/o filename
         args = ["mplayer",
                 "-ao", self.get_vo_ao_value("ao"),
                 "-vo", self.get_vo_ao_value("vo"),
@@ -241,17 +259,21 @@ class AMPLauncher(Gtk.Window):
         return args
             
     def on_play_button_clicked(self, button):
+        #get arguments and add filename, then execute
         args = self.get_args()
         args.insert(1, self.filePathEntry.get_text())
         call(args)
-       
-    def add_filters(self, dialog):
-        filter_all = Gtk.FileFilter()
-        filter_all.set_name("All files")
-        filter_all.add_pattern("*")
-        dialog.add_filter(filter_all)
-        
-win = AMPLauncher()        
-win.connect("delete-event", Gtk.main_quit)
-win.show_all()
-Gtk.main()
+
+def parse_arguments():
+        if sys.argv[1] == "-h":
+            print("Read README on github page")
+        elif sys.argv[1] == "-v":
+            print("AMPLauncher v1.0 Copyright 2016 by BlinkBP")
+
+if len(sys.argv) > 1:
+    parse_arguments()
+else:
+    win = AMPLauncher()        
+    win.connect("delete-event", Gtk.main_quit)
+    win.show_all()
+    Gtk.main()
