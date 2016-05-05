@@ -9,6 +9,7 @@ class AMPLauncher(Gtk.Window):
 
     def __init__(self):
         self.displayMode = ""
+        self.presets = []
         self.lavdoptsToggle = False
         self.lavdoptsThreads = 1
         Gtk.Window.__init__(self, title="AMPLauncher")
@@ -79,7 +80,24 @@ class AMPLauncher(Gtk.Window):
         self.threadsBox.add(self.threadsLabel)
         self.threadsBox.add(self.threadsSpinBtn)
         self.otherBox.add(self.threadsBox)
-        self.mainBox.add(self.otherBox)
+
+        #presets
+        self.presetsLabel = Gtk.Label("Presets:")
+        self.presetsComboBox = Gtk.ComboBoxText()
+        #self.setPresetsComboBox
+        self.savePresetBtn = Gtk.Button("Save preset")
+        self.loadPresetBtn = Gtk.Button("Load preset")
+        self.presetsBox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
+                                 spacing=6)
+        self.presetBtnBox = Gtk.Box(Gtk.Orientation.HORIZONTAL,
+                                    spacing=6)
+        self.presetBtnBox.add(self.savePresetBtn)
+        self.presetBtnBox.add(self.loadPresetBtn)
+        self.presetsBox.add(self.presetsLabel)
+        self.presetsBox.add(self.presetsComboBox)
+        self.presetsBox.add(self.presetBtnBox)
+        self.otherBox.add(self.presetsBox)
+        self.mainBox.add(self.otherBox)        
         #Play btn
         self.playBtn = Gtk.Button("Play")
         self.mainBox.add(self.playBtn)
@@ -101,6 +119,10 @@ class AMPLauncher(Gtk.Window):
                                        self.on_use_lavdopts_toggle)
         self.threadsSpinBtn.connect("value-changed",
                                     self.on_spin_button_value_changed)
+        self.savePresetBtn.connect("clicked",
+                           self.on_save_preset_button_clicked)
+        self.loadPresetBtn.connect("clicked",
+                            self.on_load_preset_button_clicked)
         self.playBtn.connect("clicked",
                              self.on_play_button_clicked)
         
@@ -165,6 +187,12 @@ class AMPLauncher(Gtk.Window):
 
     def on_spin_button_value_changed(self, button):
         self.lavdoptsThreads = self.threadsSpinBtn.get_value()
+
+    def on_save_preset_button_clicked(self, button):
+        pass
+
+    def on_load_preset_button_clicked(self, button):
+        pass
 
     def on_play_button_clicked(self, button):
         args = ["mplayer", self.filePathEntry.get_text(),
